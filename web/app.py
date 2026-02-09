@@ -5,7 +5,7 @@ from supabase import create_client
 app = Flask(__name__)
 app.secret_key = 'deleted_block_fixed_final_2026'
 
-# --- TUS CREDENCIALES EXACTAS ---
+# --- CREDENCIALES SUPABASE ---
 url = "https://jkcxqmvbgzfusvoqjjzs.supabase.co"
 key = "sb_publishable_v5htdDBl1jcCA5o9VZ_lXw_0U-jSQCj"
 
@@ -14,8 +14,8 @@ try:
 except Exception as e:
     print(f"Error conectando a Supabase: {e}")
 
-# --- DISEÑO (INTERFAZ) ---
-def layout(content, show_nav=False, scripts=""):
+# --- DISEÑO (TU LAYOUT ORIGINAL) ---
+def layout(content, show_nav=False):
     u, r = session.get('user'), session.get('rol')
     nav = ""
     if show_nav:
@@ -42,7 +42,7 @@ def layout(content, show_nav=False, scripts=""):
         <div id="overlay" onclick="toggleMenu()" class="fixed inset-0 bg-black/70 hidden z-40"></div>
         """
     
-    base_script = """
+    modal_script = """
     <script>
         function toggleMenu() { document.getElementById('sidebar').classList.toggle('translate-x-full'); document.getElementById('overlay').classList.toggle('hidden'); }
         function showReport(nombres, dni, imei, cb, operador, plan, equipo) {
@@ -59,7 +59,7 @@ def layout(content, show_nav=False, scripts=""):
     </script>
     """
 
-    modal_html = """
+    modal_report = """
     <div id="modalReport" class="fixed inset-0 bg-black/90 hidden z-50 flex items-center justify-center p-4">
         <div class="neon-card w-full max-w-sm p-6 relative bg-[#0a0a0a]">
             <button onclick="closeReport()" class="absolute top-4 right-4 text-red-500 font-bold text-xl">&times;</button>
@@ -78,7 +78,7 @@ def layout(content, show_nav=False, scripts=""):
     </div>
     """
     
-    return f"""<!DOCTYPE html><html lang="es"><head><script src="https://cdn.tailwindcss.com"></script><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"><style>.neon-card{{background:linear-gradient(145deg, #0a0a0a, #050505);box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.1), 0 2px 4px -1px rgba(220, 38, 38, 0.06);border: 1px solid rgba(127, 29, 29, 0.3);border-radius: 1rem;}}body{{background-color:#000;color:#fff;font-family:'Courier New', monospace;}}</style></head><body class="p-4 max-w-md mx-auto relative min-h-screen">{nav}{content}{modal_html}{base_script}{scripts}</body></html>"""
+    return f"""<!DOCTYPE html><html lang="es"><head><script src="https://cdn.tailwindcss.com"></script><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"><style>.neon-card{{background:linear-gradient(145deg, #0a0a0a, #050505);box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.1), 0 2px 4px -1px rgba(220, 38, 38, 0.06);border: 1px solid rgba(127, 29, 29, 0.3);border-radius: 1rem;}}body{{background-color:#000;color:#fff;font-family:'Courier New', monospace;}}</style></head><body class="p-4 max-w-md mx-auto relative min-h-screen">{nav}{content}{modal_report}{modal_script}</body></html>"""
 
 # --- RUTAS ---
 @app.route('/')
@@ -128,28 +128,60 @@ def login():
             except Exception as e:
                 return layout(f"<p class='text-red-500 mt-4 text-[8px] text-center'>Error DB: {e}</p>")
     session['captcha_val'] = random.randint(100000, 999999)
-    return layout(f"""<div class="flex flex-col items-center mt-12"><div class="w-20 h-20 bg-black rounded-full border-4 border-red-900 flex items-center justify-center mb-4 shadow-2xl shadow-red-900/40"><span class="text-3xl text-red-600 font-bold italic">D</span></div><h2 class="text-xl font-bold mb-8 uppercase tracking-widest">Acceso Seguro</h2><form method="POST" class="w-full space-y-4"><input type="text" name="u" placeholder="USUARIO" class="w-full bg-[#0d0d0d] border border-gray-800 rounded-lg p-3 text-xs text-center focus:border-red-500 outline-none text-white uppercase" required><input type="password" name="p" placeholder="CONTRASEÑA" class="w-full bg-[#0d0d0d] border border-gray-800 rounded-lg p-3 text-xs text-center focus:border-red-500 outline-none text-white" required><div class="flex gap-2"><div class="bg-gray-800 p-3 rounded-lg text-white font-mono font-bold tracking-widest text-sm w-1/3 text-center">{session['captcha_val']}</div><input type="text" name="cap" placeholder="CAPTCHA" class="w-2/3 bg-[#0d0d0d] border border-gray-800 rounded-lg p-3 text-xs text-center focus:border-red-500 outline-none text-white" required></div><button type="submit" class="w-full bg-red-900 hover:bg-red-800 text-white font-bold py-3 rounded-lg text-xs uppercase tracking-widest transition-all shadow-lg shadow-red-900/20">Ingresar Sistema</button></form></div>""")
+    # BOTÓN VENDEDOR AGREGADO AQUÍ
+    return layout(f"""
+    <div class="flex flex-col items-center mt-12">
+        <div class="w-20 h-20 bg-black rounded-full border-4 border-red-900 flex items-center justify-center mb-4 shadow-2xl shadow-red-900/40">
+            <span class="text-3xl text-red-600 font-bold italic">D</span>
+        </div>
+        <h2 class="text-xl font-bold mb-8 uppercase tracking-widest">Acceso Seguro</h2>
+        <form method="POST" class="w-full space-y-4">
+            <input type="text" name="u" placeholder="USUARIO" class="w-full bg-[#0d0d0d] border border-gray-800 rounded-lg p-3 text-xs text-center focus:border-red-500 outline-none text-white uppercase" required>
+            <input type="password" name="p" placeholder="CONTRASEÑA" class="w-full bg-[#0d0d0d] border border-gray-800 rounded-lg p-3 text-xs text-center focus:border-red-500 outline-none text-white" required>
+            <div class="flex gap-2">
+                <div class="bg-gray-800 p-3 rounded-lg text-white font-mono font-bold tracking-widest text-sm w-1/3 text-center">{session['captcha_val']}</div>
+                <input type="text" name="cap" placeholder="CAPTCHA" class="w-2/3 bg-[#0d0d0d] border border-gray-800 rounded-lg p-3 text-xs text-center focus:border-red-500 outline-none text-white" required>
+            </div>
+            <button type="submit" class="w-full bg-red-900 hover:bg-red-800 text-white font-bold py-3 rounded-lg text-xs uppercase tracking-widest transition-all shadow-lg shadow-red-900/20">Ingresar Sistema</button>
+        </form>
+        <a href="https://t.me/Angel_dox1" class="mt-6 w-full bg-blue-900/30 border border-blue-500 text-blue-400 py-3 rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-blue-900/50 transition flex items-center justify-center gap-2"><span>👨‍💻</span> CONTACTAR VENDEDOR</a>
+    </div>""")
 
+# --- PANEL ADMIN OPTIMIZADO PARA SUPABASE ---
 @app.route('/panel_admin', methods=['GET', 'POST'])
 def panel_admin():
-    u_log, r_log = session.get('user'), session.get('rol')
-    # Permisos de Jhorny
+    u_log = session.get('user')
+    r_log = session.get('rol')
+    
+    # Seguridad: Solo Jhorny o Admins
     if u_log != 'jhorny' and r_log != 'admin': return redirect('/')
 
-    new_user_html = "" 
-    
+    modal_creado = "" # Aquí guardaremos el HTML del modal
+
     if request.method == 'POST':
         action = request.form['action']
+        
+        # --- 1. CREAR USUARIO ---
         if action == 'crear':
-            u_new, p_new = request.form['u'], request.form['p']
+            u_new = request.form['u']
+            p_new = request.form['p']
+            r_new = request.form['r']
+            
             try:
-                supabase.table("usuarios").insert({"user": u_new, "pass": p_new, "rol": request.form['r'], "creditos": 0, "creado_por": u_log}).execute()
+                # Insertar en Supabase
+                supabase.table("usuarios").insert({
+                    "user": u_new, 
+                    "pass": p_new, 
+                    "rol": r_new, 
+                    "creditos": 0, 
+                    "creado_por": u_log
+                }).execute()
                 
-                # --- MODAL DE ÉXITO ESTILO LAIN ---
-                new_user_html = f"""
-                <div id="modalNewUser" class="fixed inset-0 bg-black/95 z-[60] flex items-center justify-center p-4">
+                # --- HTML DEL MODAL DE ÉXITO (ESTILO DELETED BLOCK) ---
+                modal_creado = f"""
+                <div id="modalNew" class="fixed inset-0 bg-black/95 z-[70] flex items-center justify-center p-4">
                     <div class="w-full max-w-sm bg-[#121212] border border-[#a29bfe] rounded-2xl p-6 relative shadow-[0_0_30px_rgba(162,155,254,0.3)] text-center">
-                        <span onclick="document.getElementById('modalNewUser').remove()" class="absolute top-4 right-4 text-gray-500 cursor-pointer text-xl">&times;</span>
+                        <span onclick="document.getElementById('modalNew').remove()" class="absolute top-4 right-4 text-gray-500 cursor-pointer text-xl">&times;</span>
                         <h2 class="text-[#a29bfe] font-bold text-lg mb-6">✨ DELETED BLOCK ✨</h2>
                         
                         <div class="bg-[#1e1e1e] p-3 rounded-lg mb-3 flex justify-between items-center">
@@ -166,42 +198,53 @@ def panel_admin():
                         </div>
 
                         <button onclick="copiarDatos('{u_new}', '{p_new}')" class="w-full bg-[#6c5ce7] text-white font-bold py-3 rounded-xl shadow-lg hover:bg-[#5849be] transition text-xs uppercase">Copiar Todo</button>
-                        <button onclick="document.getElementById('modalNewUser').remove()" class="w-full mt-2 bg-red-500/20 text-red-400 font-bold py-2 rounded-xl text-xs uppercase">Cerrar</button>
+                        <button onclick="document.getElementById('modalNew').remove()" class="w-full mt-2 bg-red-500/20 text-red-400 font-bold py-2 rounded-xl text-xs uppercase">Cerrar</button>
                     </div>
                 </div>
                 """
             except Exception as e:
-                print(e)
-                
+                print(f"Error creando: {e}")
+
+        # --- 2. AGREGAR CRÉDITOS ---
         elif action == 'creditos':
             target, cant = request.form['target'], int(request.form['cant'])
+            
+            # Consultar saldo del admin
             res = supabase.table("usuarios").select("creditos").eq("user", u_log).execute()
-            # Créditos infinitos para Jhorny
-            if u_log == 'jhorny' or (res.data and res.data[0]['creditos'] >= cant):
+            saldo_admin = res.data[0]['creditos'] if res.data else 0
+            
+            if u_log == 'jhorny' or saldo_admin >= cant:
+                # Obtener saldo actual del cliente
                 res_t = supabase.table("usuarios").select("creditos").eq("user", target).execute()
                 if res_t.data:
+                    # Sumar al cliente
                     supabase.table("usuarios").update({"creditos": res_t.data[0]['creditos'] + cant}).eq("user", target).execute()
-                    # Si NO es jhorny, se le descuenta saldo
+                    # Restar al admin (si no es Jhorny)
                     if u_log != 'jhorny':
-                        supabase.table("usuarios").update({"creditos": res.data[0]['creditos'] - cant}).eq("user", u_log).execute()
+                        supabase.table("usuarios").update({"creditos": saldo_admin - cant}).eq("user", u_log).execute()
 
+    # --- OBTENER LISTA DE USUARIOS ---
     query = supabase.table("usuarios").select("user, creditos, rol")
-    # Visibilidad de usuarios para Jhorny
     if u_log != 'jhorny': query = query.eq("creado_por", u_log)
     users = query.execute().data
     
-    lista = "".join([f"""
-    <div class="flex justify-between items-center text-[10px] p-3 border-b border-gray-900">
-        <div>
-            <span class="block text-white font-bold">{u["user"]}</span>
-            <span class="text-[8px] text-gray-500 uppercase">{u["rol"]}</span>
+    # Generar HTML de la lista con botón + ADD
+    lista = ""
+    for u in users:
+        lista += f"""
+        <div class="flex justify-between items-center text-[10px] p-3 border-b border-gray-900 hover:bg-white/5 transition">
+            <div>
+                <span class="block text-white font-bold">{u["user"]}</span>
+                <span class="text-[8px] text-gray-500 uppercase">{u["rol"]}</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="text-red-500 font-bold text-xs">{u["creditos"]} cr</span>
+                <button onclick="addCredits('{u['user']}')" class="bg-blue-900/40 border border-blue-500 text-blue-400 px-2 py-1 rounded text-[9px] font-bold hover:bg-blue-900/60 transition cursor-pointer">+ ADD</button>
+            </div>
         </div>
-        <div class="flex items-center gap-3">
-            <span class="text-red-500 font-bold text-xs">{u["creditos"]} cr</span>
-            <button onclick="addCredits('{u['user']}')" class="bg-blue-900/40 border border-blue-500 text-blue-400 px-2 py-1 rounded text-[9px] font-bold hover:bg-blue-900/60">+ ADD</button>
-        </div>
-    </div>""" for u in users])
+        """
 
+    # --- JAVASCRIPT EXTRA (Insertado al final del content) ---
     extra_js = """
     <script>
     function addCredits(user) {
@@ -219,8 +262,9 @@ def panel_admin():
     </script>
     """
 
+    # --- RETORNAR VISTA ---
     return layout(f"""
-    {new_user_html}
+    {modal_creado}
     <div class="neon-card p-6 mt-4">
         <h2 class="text-[10px] text-red-500 font-bold uppercase text-center mb-6 tracking-widest italic">Panel ({r_log})</h2>
         
@@ -235,11 +279,11 @@ def panel_admin():
                 <option value="operador">Operador (Trabajador)</option>
                 <option value="admin">Administrador (Revendedor)</option>
             </select>
-            <button class="w-full bg-red-900 text-white font-bold py-2 rounded text-[10px] uppercase hover:bg-red-800 transition">Crear Usuario</button>
+            <button class="w-full bg-red-900 text-white font-bold py-2 rounded text-[10px] uppercase hover:bg-red-800 transition shadow-lg">Crear Usuario</button>
         </form>
 
         <h3 class="text-[9px] text-gray-500 font-bold uppercase mb-4 text-center">Usuarios Registrados</h3>
-        <div class="max-h-64 overflow-y-auto space-y-1">
+        <div class="max-h-64 overflow-y-auto space-y-1 custom-scrollbar">
             {lista or '<p class="text-center text-gray-700 text-[9px]">Sin usuarios creados</p>'}
         </div>
         
@@ -249,11 +293,12 @@ def panel_admin():
             <input type="hidden" name="cant" id="c_input">
         </form>
     </div>
-    """, True, extra_js)
+    
+    {extra_js}
+    """, True)
 
 @app.route('/gestion')
 def gestion():
-    # Permisos de Jhorny
     if session.get('rol') not in ['operador', 'admin'] and session.get('user') != 'jhorny': return redirect('/')
     ps = supabase.table("pedidos").select("id_pedido, cliente, numero").eq("estado", "PENDIENTE").execute().data
     l = "".join([f'<div class="neon-card p-4 mb-3 flex justify-between items-center"><div><p class="text-[7px] text-gray-500 uppercase">CLIENTE: {p["cliente"]}</p><p class="text-lg font-mono text-white tracking-widest">{p["numero"]}</p></div><a href="/trabajar/{p["id_pedido"]}" class="bg-yellow-600/20 text-yellow-500 text-[9px] font-bold px-3 py-1 rounded border border-yellow-600/50 uppercase">Atender</a></div>' for p in ps])
@@ -272,7 +317,7 @@ def completar():
 @app.route('/planes')
 def planes():
     precios = [("01 CRÉDITO", "S/15.00"), ("04 CRÉDITOS", "S/60.00"), ("06 CRÉDITOS", "S/90.00"), ("10 CRÉDITOS", "S/150.00"), ("12 CRÉDITOS", "S/120.00"), ("20 CRÉDITOS", "S/200.00")]
-    # ENLACE DE SOPORTE CORREGIDO A ANGEL_DOX1
+    # CAMBIADO EL TELEGRAM A angel_dox1
     cards = "".join([f'<div class="neon-card p-4 mb-3 border-l-4 border-red-600 flex justify-between items-center"><div><p class="text-sm font-bold text-white uppercase">{p[0]}</p><p class="text-xs text-gray-500">{p[1]}</p></div><a href="https://t.me/angel_dox1" target="_blank" class="bg-red-900/20 text-red-500 text-[9px] font-bold px-3 py-2 rounded border border-red-900 uppercase">Comprar</a></div>' for p in precios])
     return layout(f"<h2 class='text-center text-[10px] text-red-500 font-bold mt-10 mb-6 uppercase tracking-widest'>Paquetes Oficiales</h2>{cards}", True)
 
@@ -292,8 +337,16 @@ def solicitar():
 
 @app.route('/soporte')
 def soporte():
-    # ENLACE Y TEXTO DE SOPORTE CORREGIDO A ANGEL_DOX1
-    return layout(f"""<div class="neon-card p-8 mt-10 text-center border-t-2 border-green-500"><h2 class="text-xl font-bold mb-2 uppercase italic text-white">Soporte 24/7</h2><a href="https://t.me/angel_dox1" class="text-green-400 text-sm font-bold block mb-4">@angel_dox1</a><p class="text-[9px] text-gray-500 uppercase">Para recargas, reportes de fallos o dudas.</p></div>""", True)
+    # BOTÓN SOPORTE GRANDE AGREGADO AQUÍ
+    return layout(f"""
+    <div class="neon-card p-8 mt-10 text-center border-t-2 border-green-500">
+        <h2 class="text-xl font-bold mb-6 uppercase italic text-white">Soporte 24/7</h2>
+        <a href="https://t.me/angel_dox1" class="inline-block w-full bg-green-600/20 border border-green-500 text-green-400 p-4 rounded-xl font-bold uppercase text-xs hover:bg-green-600/40 transition shadow-[0_0_15px_rgba(74,222,128,0.2)]">
+            <span class="text-xl block mb-1">✈️</span>
+            Contactar a @angel_dox1
+        </a>
+        <p class="text-[9px] text-gray-500 uppercase mt-4">Para recargas, reportes de fallos o dudas.</p>
+    </div>""", True)
 
 @app.route('/logout')
 def logout(): session.clear(); return redirect('/login')
@@ -301,4 +354,3 @@ def logout(): session.clear(); return redirect('/login')
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
-
