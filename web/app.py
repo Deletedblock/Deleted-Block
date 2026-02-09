@@ -1,20 +1,21 @@
 import os, random
-from flask import Flask, render_template_string, request, redirect, url_for, session
+from flask import Flask, request, redirect, session
 from supabase import create_client
 
 app = Flask(__name__)
 app.secret_key = 'deleted_block_fixed_final_2026'
 
-# --- LLAVES DE SUPABASE (PUESTAS DIRECTAS PARA QUE FUNCIONE YA) ---
+# --- TUS CREDENCIALES EXACTAS (NO TOCAR) ---
 url = "https://jkcxqmvbgzfusvoqjjzs.supabase.co"
 key = "sb_publishable_v5htdDBl1jcCA5o9VZ_lXw_0U-jSQCj"
 
+# Conexión a Supabase
 try:
     supabase = create_client(url, key)
 except Exception as e:
-    print(f"Error grave conectando a Supabase: {e}")
+    print(f"Error conectando a Supabase: {e}")
 
-# --- DISEÑO Y LAYOUT ---
+# --- DISEÑO (INTERFAZ) ---
 def layout(content, show_nav=False):
     u, r = session.get('user'), session.get('rol')
     nav = ""
@@ -58,30 +59,26 @@ def layout(content, show_nav=False):
         function closeReport() { document.getElementById('modalReport').classList.add('hidden'); }
     </script>
     """
-
+    
+    # MODAL HTML (Oculto por defecto)
     modal_html = """
-    <div id="modalReport" class="hidden fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4">
-        <div class="bg-[#0f0f0f] border border-red-600/50 w-full max-w-xs rounded-2xl p-6 shadow-2xl shadow-red-900/50 relative">
-            <button onclick="closeReport()" class="absolute top-3 right-4 text-red-500 font-bold text-xl">&times;</button>
-            <div class="text-center mb-6">
-                <div class="w-12 h-12 bg-black rounded-full border-2 border-red-600 flex items-center justify-center mx-auto mb-2"><span class="text-xl font-bold italic text-red-600">D</span></div>
-                <h3 class="text-red-500 font-bold uppercase tracking-widest text-xs">Reporte Oficial</h3>
-                <p class="text-[8px] text-gray-500 uppercase">Deleted Block System</p>
+    <div id="modalReport" class="fixed inset-0 bg-black/90 hidden z-50 flex items-center justify-center p-4">
+        <div class="neon-card w-full max-w-sm p-6 relative bg-[#0a0a0a]">
+            <button onclick="closeReport()" class="absolute top-4 right-4 text-red-500 font-bold text-xl">&times;</button>
+            <h3 class="text-red-500 font-bold uppercase text-center mb-6 text-sm tracking-widest">Reporte Oficial</h3>
+            <div class="space-y-3 text-[10px] font-mono">
+                <div class="flex justify-between border-b border-gray-800 pb-1"><span class="text-gray-500">TITULAR:</span><span id="rep_nombres" class="text-white text-right"></span></div>
+                <div class="flex justify-between border-b border-gray-800 pb-1"><span class="text-gray-500">DNI:</span><span id="rep_dni" class="text-blue-400 font-bold text-right"></span></div>
+                <div class="flex justify-between border-b border-gray-800 pb-1"><span class="text-gray-500">IMEI:</span><span id="rep_imei" class="text-white text-right"></span></div>
+                <div class="flex justify-between border-b border-gray-800 pb-1"><span class="text-gray-500">C.BLOQ:</span><span id="rep_cb" class="text-red-500 font-bold text-right"></span></div>
+                <div class="flex justify-between border-b border-gray-800 pb-1"><span class="text-gray-500">OPERADOR:</span><span id="rep_ope" class="text-white text-right"></span></div>
+                <div class="flex justify-between border-b border-gray-800 pb-1"><span class="text-gray-500">PLAN:</span><span id="rep_plan" class="text-white text-right"></span></div>
+                <div class="flex justify-between border-b border-gray-800 pb-1"><span class="text-gray-500">EQUIPO:</span><span id="rep_equipo" class="text-white text-right"></span></div>
             </div>
-            <div class="space-y-3 text-[10px] font-mono text-gray-300">
-                <div class="flex justify-between border-b border-gray-800 pb-1"><span>NOMBRES:</span> <span id="rep_nombres" class="text-white font-bold text-right"></span></div>
-                <div class="flex justify-between border-b border-gray-800 pb-1"><span>DNI:</span> <span id="rep_dni" class="text-white font-bold text-right"></span></div>
-                <div class="flex justify-between border-b border-gray-800 pb-1"><span>OPERADOR:</span> <span id="rep_ope" class="text-blue-400 font-bold text-right"></span></div>
-                <div class="flex justify-between border-b border-gray-800 pb-1"><span>PLAN:</span> <span id="rep_plan" class="text-yellow-500 font-bold text-right"></span></div>
-                <div class="flex justify-between border-b border-gray-800 pb-1"><span>EQUIPO:</span> <span id="rep_equipo" class="text-white font-bold text-right"></span></div>
-                <div class="flex justify-between border-b border-gray-800 pb-1"><span>IMEI:</span> <span id="rep_imei" class="text-red-400 font-bold text-right"></span></div>
-                <div class="flex justify-between border-b border-gray-800 pb-1"><span>COD. BLOQUEO:</span> <span id="rep_cb" class="text-green-500 font-bold text-right"></span></div>
-            </div>
-            <button onclick="closeReport()" class="w-full mt-4 bg-red-900/30 text-red-500 border border-red-900 rounded-xl py-2 text-[10px] uppercase font-bold">Cerrar</button>
+            <button onclick="closeReport()" class="w-full mt-6 bg-red-900/30 text-red-500 py-3 rounded-xl font-bold uppercase text-xs">Cerrar</button>
         </div>
     </div>
     """
-
     return f"""<!DOCTYPE html><html lang="es"><head><script src="https://cdn.tailwindcss.com"></script><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"><style>body {{ background-color: #050505; color: white; font-family: sans-serif; touch-action: manipulation; overflow-x: hidden; }}.neon-card {{ background: #0d0d0d; border: 1px solid #1a1a1a; border-radius: 20px; }}.input-dark {{ background: #141414; border: 1px solid #222; border-radius: 12px; padding: 12px; width: 100%; outline: none; color: white; }}</style>{modal_script}</head><body class="min-h-screen p-4 flex flex-col items-center"><div class="w-full max-w-sm">{nav}{content}</div>{modal_html}</body></html>"""
 
 # --- RUTAS ---
@@ -89,14 +86,11 @@ def layout(content, show_nav=False):
 def index():
     if 'user' not in session: return redirect('/login')
     u_log = session['user']
-    # Obtener creditos
     try:
         res_u = supabase.table("usuarios").select("creditos").eq("user", u_log).execute()
         rest = res_u.data[0]['creditos'] if res_u.data else 0
-        # Obtener usados
         res_c = supabase.table("pedidos").select("*", count="exact").eq("cliente", u_log).eq("estado", "EXITOSO").execute()
         usados = res_c.count if res_c.count is not None else 0
-        # Obtener historial
         peds = supabase.table("pedidos").select("*").eq("cliente", u_log).order("id_pedido", desc=True).limit(8).execute().data
     except:
         rest, usados, peds = 0, 0, []
@@ -129,8 +123,10 @@ def login():
                 if res.data:
                     session['user'], session['rol'] = u, res.data[0]['rol']
                     return redirect('/')
+                else:
+                    return layout("<p class='text-red-500 mt-4 font-bold uppercase text-xs'>Usuario o Clave incorrecta</p>")
             except Exception as e:
-                return layout(f"<p class='text-red-500'>Error de conexión: {e}</p>")
+                return layout(f"<p class='text-red-500 mt-4 text-[8px]'>Error DB: {e}</p>")
     session['captcha_val'] = random.randint(100000, 999999)
     return layout(f"""<div class="flex flex-col items-center mt-12"><div class="w-20 h-20 bg-black rounded-full border-4 border-red-900 flex items-center justify-center mb-4 shadow-2xl"><span class="text-4xl font-bold italic text-white">D</span></div><h1 class="text-xl font-bold mb-1 uppercase tracking-widest text-white">DELETED BLOCK</h1><form method="post" class="w-full space-y-4 mt-4"><input name="u" placeholder="Usuario" class="input-dark"><input name="p" type="password" placeholder="Contraseña" class="input-dark"><div class="flex gap-2"><div class="bg-white text-black p-3 rounded-xl font-mono font-bold w-1/2 text-center text-lg">{session['captcha_val']}</div><input name="cap" placeholder="Captcha" class="input-dark w-1/2 text-center"></div><button class="w-full bg-red-800 p-4 rounded-2xl font-bold text-sm uppercase">Acceder</button></form></div>""", False)
 
@@ -184,7 +180,7 @@ def planes():
 
 @app.route('/bloqueo')
 def bloqueo():
-    return layout(f"""<div class="neon-card p-6 mt-10 text-center"><h2 class="text-[10px] text-red-400 font-bold mb-6 uppercase italic tracking-widest">Solicitar Bloqueo</h2><form action="/solicitar" method="POST" class="space-y-4"><div class="bg-black p-5 rounded-2xl border border-gray-800"><input type="text" name="num" placeholder="9XXXXXXXX" maxlength="9" class="bg-transparent w-full text-center text-4xl font-mono text-white outline-none" required></div><button class="w-full bg-red-800 p-4 rounded-2xl font-bold text-sm uppercase">Enviar Solicitud</button></form></div>""", True)
+    return layout(f"""<div class="neon-card p-6 mt-10 text-center"><h2 class="text-[10px] text-red-400 font-bold mb-6 uppercase italic tracking-widest">Solicitar Bloqueo</h2><form action="/solicitar" method="POST" class="space-y-4"><div class="bg-black p-5 rounded-2xl border border-gray-800"><input type="text" name="num" placeholder="901432132" maxlength="9" class="bg-transparent w-full text-center text-4xl font-mono text-white outline-none" required></div><button class="w-full bg-red-800 p-4 rounded-2xl font-bold text-sm uppercase">Enviar Solicitud</button></form></div>""", True)
 
 @app.route('/solicitar', methods=['POST'])
 def solicitar():
