@@ -5,17 +5,18 @@ from supabase import create_client
 app = Flask(__name__)
 app.secret_key = 'deleted_block_fixed_final_2026'
 
-# --- CONEXIÓN A SUPABASE ---
-url = os.environ.get("SUPABASE_URL")
-key = os.environ.get("SUPABASE_KEY")
-supabase = create_client(url, key)
+# --- LLAVES DE SUPABASE (PUESTAS DIRECTAS PARA QUE FUNCIONE YA) ---
+url = "https://jkcxqmvbgzfusvoqjjzs.supabase.co"
+key = "sb_publishable_v5htdDBl1jcCA5o9VZ_lXw_0U-jSQCj"
 
-# --- FUNCIÓN DE DISEÑO (TU LAYOUT ORIGINAL) ---
+try:
+    supabase = create_client(url, key)
+except Exception as e:
+    print(f"Error grave conectando a Supabase: {e}")
+
+# --- DISEÑO Y LAYOUT ---
 def layout(content, show_nav=False):
     u, r = session.get('user'), session.get('rol')
-    is_boss = (u == 'jhorny')
-    is_admin = (r == 'admin')
-    
     nav = ""
     if show_nav:
         nav = f"""
@@ -30,8 +31,8 @@ def layout(content, show_nav=False):
             <div class="flex justify-between items-center mb-10"><span class="text-xs font-bold text-red-500 uppercase tracking-widest">Menú de Control</span><button onclick="toggleMenu()" class="text-white text-2xl">&times;</button></div>
             <div class="flex flex-col gap-6">
                 <a href="/" class="text-xs font-bold uppercase text-blue-400">🏠 Inicio</a>
-                {f"<a href='/panel_admin' class='text-xs font-bold uppercase text-red-500 font-black tracking-widest'>💎 PANEL ADMIN</a>" if is_boss or is_admin else ""}
-                {f"<a href='/gestion' class='text-xs font-bold uppercase text-yellow-500'>⚙️ Gestión Pedidos</a>" if is_boss or r == 'operador' else ""}
+                {f"<a href='/panel_admin' class='text-xs font-bold uppercase text-red-500 font-black tracking-widest'>💎 PANEL ADMIN</a>" if u == 'jhorny' or r == 'admin' else ""}
+                {f"<a href='/gestion' class='text-xs font-bold uppercase text-yellow-500'>⚙️ Gestión Pedidos</a>" if u == 'jhorny' or r == 'operador' else ""}
                 <a href="/planes" class="text-xs font-bold uppercase text-purple-400 font-black">🛒 Comprar Créditos</a>
                 <a href="/bloqueo" class="text-xs font-bold uppercase text-gray-400">🚫 Bloqueo</a>
                 <a href="/soporte" class="text-xs font-bold uppercase text-green-500">🎧 Soporte</a>
@@ -83,16 +84,23 @@ def layout(content, show_nav=False):
 
     return f"""<!DOCTYPE html><html lang="es"><head><script src="https://cdn.tailwindcss.com"></script><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"><style>body {{ background-color: #050505; color: white; font-family: sans-serif; touch-action: manipulation; overflow-x: hidden; }}.neon-card {{ background: #0d0d0d; border: 1px solid #1a1a1a; border-radius: 20px; }}.input-dark {{ background: #141414; border: 1px solid #222; border-radius: 12px; padding: 12px; width: 100%; outline: none; color: white; }}</style>{modal_script}</head><body class="min-h-screen p-4 flex flex-col items-center"><div class="w-full max-w-sm">{nav}{content}</div>{modal_html}</body></html>"""
 
+# --- RUTAS ---
 @app.route('/')
 def index():
     if 'user' not in session: return redirect('/login')
     u_log = session['user']
-    res_u = supabase.table("usuarios").select("creditos").eq("user", u_log).execute()
-    rest = res_u.data[0]['creditos'] if res_u.data else 0
-    res_c = supabase.table("pedidos").select("*", count="exact").eq("cliente", u_log).eq("estado", "EXITOSO").execute()
-    usados = res_c.count if res_c.count is not None else 0
-    peds = supabase.table("pedidos").select("*").eq("cliente", u_log).order("id_pedido", desc=True).limit(8).execute().data
-    
+    # Obtener creditos
+    try:
+        res_u = supabase.table("usuarios").select("creditos").eq("user", u_log).execute()
+        rest = res_u.data[0]['creditos'] if res_u.data else 0
+        # Obtener usados
+        res_c = supabase.table("pedidos").select("*", count="exact").eq("cliente", u_log).eq("estado", "EXITOSO").execute()
+        usados = res_c.count if res_c.count is not None else 0
+        # Obtener historial
+        peds = supabase.table("pedidos").select("*").eq("cliente", u_log).order("id_pedido", desc=True).limit(8).execute().data
+    except:
+        rest, usados, peds = 0, 0, []
+
     h = ""
     for p in peds:
         btn = ""
@@ -116,10 +124,13 @@ def login():
     if request.method == 'POST':
         if request.form.get('cap') == str(session.get('captcha_val')):
             u, p = request.form['u'], request.form['p']
-            res = supabase.table("usuarios").select("*").eq("user", u).eq("pass", p).execute()
-            if res.data:
-                session['user'], session['rol'] = u, res.data[0]['rol']
-                return redirect('/')
+            try:
+                res = supabase.table("usuarios").select("*").eq("user", u).eq("pass", p).execute()
+                if res.data:
+                    session['user'], session['rol'] = u, res.data[0]['rol']
+                    return redirect('/')
+            except Exception as e:
+                return layout(f"<p class='text-red-500'>Error de conexión: {e}</p>")
     session['captcha_val'] = random.randint(100000, 999999)
     return layout(f"""<div class="flex flex-col items-center mt-12"><div class="w-20 h-20 bg-black rounded-full border-4 border-red-900 flex items-center justify-center mb-4 shadow-2xl"><span class="text-4xl font-bold italic text-white">D</span></div><h1 class="text-xl font-bold mb-1 uppercase tracking-widest text-white">DELETED BLOCK</h1><form method="post" class="w-full space-y-4 mt-4"><input name="u" placeholder="Usuario" class="input-dark"><input name="p" type="password" placeholder="Contraseña" class="input-dark"><div class="flex gap-2"><div class="bg-white text-black p-3 rounded-xl font-mono font-bold w-1/2 text-center text-lg">{session['captcha_val']}</div><input name="cap" placeholder="Captcha" class="input-dark w-1/2 text-center"></div><button class="w-full bg-red-800 p-4 rounded-2xl font-bold text-sm uppercase">Acceder</button></form></div>""", False)
 
@@ -127,6 +138,7 @@ def login():
 def panel_admin():
     u_log, r_log = session.get('user'), session.get('rol')
     if u_log != 'jhorny' and r_log != 'admin': return redirect('/')
+    
     if request.method == 'POST':
         action = request.form['action']
         if action == 'crear':
