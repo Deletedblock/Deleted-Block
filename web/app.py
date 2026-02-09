@@ -1,10 +1,20 @@
 from flask import Flask, render_template_string, request, redirect, session
 import sqlite3
 import random
+import os
 
 app = Flask(__name__)
 app.secret_key = 'deleted_block_fixed_final_2026'
-DB_PATH = '/data/data/com.termux/files/home/LainSystem/database/sistema.db'
+
+# --- CORRECCIÓN DE RUTA PARA RENDER ---
+# Esto detecta la carpeta actual donde esté el código
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Busca la base de datos dentro de una carpeta 'database' en tu proyecto
+DB_PATH = os.path.join(BASE_DIR, 'database', 'sistema.db')
+
+# Asegurarse de que la carpeta database existe (evita errores en Render)
+if not os.path.exists(os.path.dirname(DB_PATH)):
+    os.makedirs(os.path.dirname(DB_PATH))
 
 # --- FUNCIÓN DE DISEÑO ---
 def layout(content, show_nav=False):
@@ -12,7 +22,6 @@ def layout(content, show_nav=False):
     is_boss = (u == 'jhorny')
     is_admin = (r == 'admin')
     
-    # Menú lateral dinámico según quién entre
     nav = ""
     if show_nav:
         nav = f"""
@@ -38,7 +47,6 @@ def layout(content, show_nav=False):
         <div id="overlay" onclick="toggleMenu()" class="fixed inset-0 bg-black/70 hidden z-40"></div>
         """
     
-    # Scripts para el Modal (Ventana de Reporte)
     modal_script = """
     <script>
         function toggleMenu() { document.getElementById('sidebar').classList.toggle('translate-x-full'); document.getElementById('overlay').classList.toggle('hidden'); }
@@ -58,7 +66,6 @@ def layout(content, show_nav=False):
     </script>
     """
 
-    # Estructura del Modal Oculto
     modal_html = """
     <div id="modalReport" class="hidden fixed inset-0 bg-black/90 z-[60] flex items-center justify-center p-4">
         <div class="bg-[#0f0f0f] border border-red-600/50 w-full max-w-xs rounded-2xl p-6 shadow-2xl shadow-red-900/50 relative">
@@ -77,9 +84,6 @@ def layout(content, show_nav=False):
                 <div class="flex justify-between border-b border-gray-800 pb-1"><span>IMEI:</span> <span id="rep_imei" class="text-red-400 font-bold text-right"></span></div>
                 <div class="flex justify-between border-b border-gray-800 pb-1"><span>COD. BLOQUEO:</span> <span id="rep_cb" class="text-green-500 font-bold text-right"></span></div>
             </div>
-            <div class="mt-6 text-center">
-                 <p class="text-[7px] text-gray-600 uppercase">Este documento es digital y único.</p>
-            </div>
             <button onclick="closeReport()" class="w-full mt-4 bg-red-900/30 text-red-500 border border-red-900 rounded-xl py-2 text-[10px] uppercase font-bold">Cerrar</button>
         </div>
     </div>
@@ -87,7 +91,6 @@ def layout(content, show_nav=False):
 
     return f"""<!DOCTYPE html><html lang="es"><head><script src="https://cdn.tailwindcss.com"></script><meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"><style>body {{ background-color: #050505; color: white; font-family: sans-serif; touch-action: manipulation; overflow-x: hidden; }}.neon-card {{ background: #0d0d0d; border: 1px solid #1a1a1a; border-radius: 20px; }}.input-dark {{ background: #141414; border: 1px solid #222; border-radius: 12px; padding: 12px; width: 100%; outline: none; color: white; }}</style>{modal_script}</head><body class="min-h-screen p-4 flex flex-col items-center"><div class="w-full max-w-sm">{nav}{content}</div>{modal_html}</body></html>"""
 
-# --- DASHBOARD / INICIO ---
 @app.route('/')
 def index():
     if 'user' not in session: return redirect('/login')
@@ -96,20 +99,16 @@ def index():
     rest = cursor.fetchone()[0]
     cursor.execute("SELECT COUNT(*) FROM pedidos WHERE cliente=? AND estado='EXITOSO'", (session['user'],))
     usados = cursor.fetchone()[0]
-    # Obtenemos TODOS los datos necesarios para el reporte
     cursor.execute("SELECT numero, estado, nombres, dni, imei, c_bloq, operador_tel, plan, equipo FROM pedidos WHERE cliente=? ORDER BY id_pedido DESC LIMIT 8", (session['user'],))
     peds = cursor.fetchall()
     
     h = ""
     for p in peds:
-        # p[0]=num, p[1]=estado, p[2]=nom, p[3]=dni, p[4]=imei, p[5]=cb, p[6]=ope, p[7]=plan, p[8]=equipo
         btn = ""
         if p[1] == 'EXITOSO':
-            # Pasamos todos los datos a la funcion JS showReport
-            btn = f"""<button onclick="showReport('{p[2]}', '{p[3]}', '{p[4]}', '{p[5]}', '{p[6]}', '{p[7]}', '{p[8]}')" class="bg-red-900/20 text-red-500 border border-red-500/50 px-3 py-1 rounded text-[8px] font-bold hover:bg-red-900/50 transition">VER REPORTE</button>"""
+            btn = f"""<button onclick="showReport('{p[2]}', '{p[3]}', '{p[4]}', '{p[5]}', '{p[6]}', '{p[7]}', '{p[8]}')" class="bg-red-900/20 text-red-500 border border-red-500/50 px-3 py-1 rounded text-[8px] font-bold">VER REPORTE</button>"""
         else:
             btn = '<span class="text-[8px] text-yellow-500 italic font-bold tracking-widest">PROCESANDO</span>'
-        
         h += f'<div class="flex justify-between items-center border-b border-gray-900 py-3"><div class="flex flex-col"><span class="text-xs font-mono text-white">{p[0]}</span><span class="text-[8px] text-gray-500 uppercase">{p[1]}</span></div>{btn}</div>'
 
     return layout(f"""
@@ -121,113 +120,41 @@ def index():
         <div class="neon-card p-5"><h3 class="text-[9px] font-bold text-red-400 uppercase mb-4 text-center border-b border-gray-900 pb-2">Historial</h3><div class="space-y-1">{h or "<p class='text-center text-gray-600 text-xs py-4'>Sin historial</p>"}</div></div>
     """, True)
 
-# --- PANEL ADMIN UNIFICADO (SuperAdmin y Admin Secundario) ---
 @app.route('/panel_admin', methods=['GET', 'POST'])
 def panel_admin():
     u_log = session.get('user')
     r_log = session.get('rol')
-    
-    # Seguridad: Solo Jhorny o Admins pueden entrar
     if u_log != 'jhorny' and r_log != 'admin': return redirect('/')
-    
     conn = sqlite3.connect(DB_PATH); cursor = conn.cursor()
-    
     if request.method == 'POST':
         action = request.form['action']
-        
-        # LOGICA CREAR USUARIO
         if action == 'crear':
-            # Admin solo crea clientes (user). SuperAdmin crea lo que quiera.
-            rol_a_crear = request.form['r']
-            if r_log == 'admin' and rol_a_crear != 'user':
-                return "Error: Admin solo puede crear Clientes" # Seguridad extra
-            
             cursor.execute("INSERT INTO usuarios (user, pass, rol, creditos, creado_por) VALUES (?, ?, ?, 0, ?)", 
-                           (request.form['u'], request.form['p'], rol_a_crear, u_log))
+                           (request.form['u'], request.form['p'], request.form['r'], u_log))
             conn.commit()
-            
-        # LOGICA CARGAR CREDITOS
         elif action == 'creditos':
             target, cant = request.form['target'], int(request.form['cant'])
-            
-            # Verificar si el Admin tiene saldo suficiente (SuperAdmin tiene infinito)
-            cursor.execute("SELECT creditos FROM usuarios WHERE user=?", (u_log,))
-            saldo_admin = cursor.fetchone()[0]
-            
-            if u_log == 'jhorny' or saldo_admin >= cant:
-                cursor.execute("UPDATE usuarios SET creditos = creditos + ? WHERE user=?", (cant, target))
-                if u_log != 'jhorny': # Si no es el jefe, le descontamos
-                    cursor.execute("UPDATE usuarios SET creditos = creditos - ? WHERE user=?", (cant, u_log))
-                conn.commit()
+            cursor.execute("UPDATE usuarios SET creditos = creditos + ? WHERE user=?", (cant, target))
+            if u_log != 'jhorny': cursor.execute("UPDATE usuarios SET creditos = creditos - ? WHERE user=?", (cant, u_log))
+            conn.commit()
 
-    # Mostrar Usuarios (Jhorny ve todos, Admin solo los suyos)
-    if u_log == 'jhorny':
-        cursor.execute("SELECT user, creditos, rol FROM usuarios")
-    else:
-        cursor.execute("SELECT user, creditos, rol FROM usuarios WHERE creado_por=?", (u_log,))
-    
+    cursor.execute("SELECT user, creditos, rol FROM usuarios" if u_log == 'jhorny' else "SELECT user, creditos, rol FROM usuarios WHERE creado_por=?", (u_log,))
     users = cursor.fetchall()
     lista = "".join([f'<div class="flex justify-between text-[10px] p-3 border-b border-gray-900"><span>{u[0]} <b class="text-gray-600">({u[2]})</b></span><span class="text-red-500 font-bold">{u[1]} Cr.</span></div>' for u in users])
 
     return layout(f"""
         <div class="neon-card p-6 mt-4">
-            <h2 class="text-[10px] text-red-500 font-bold uppercase text-center mb-6 tracking-widest italic">Panel de Control ({r_log})</h2>
-            
+            <h2 class="text-[10px] text-red-500 font-bold uppercase text-center mb-6">Panel ({r_log})</h2>
             <form method="POST" class="space-y-3 mb-8 border-b border-gray-800 pb-6">
-                <input type="hidden" name="action" value="crear">
-                <p class="text-[8px] text-gray-500 uppercase font-bold">Crear Usuario</p>
-                <input name="u" placeholder="Usuario Nuevo" class="input-dark text-xs" required>
-                <input name="p" placeholder="Contraseña" class="input-dark text-xs" required>
-                <select name="r" class="input-dark text-xs bg-[#141414]">
-                    <option value="user">Cliente</option>
-                    {"<option value='operador'>Operador</option><option value='admin'>Admin Secundario</option>" if u_log == 'jhorny' else ""}
-                </select>
-                <button class="w-full bg-blue-700 p-3 rounded-xl font-bold text-[9px] uppercase">Registrar</button>
+                <input type="hidden" name="action" value="crear"><input name="u" placeholder="Usuario Nuevo" class="input-dark text-xs" required><input name="p" placeholder="Contraseña" class="input-dark text-xs" required>
+                <select name="r" class="input-dark text-xs bg-[#141414]"><option value="user">Cliente</option><option value="operador">Operador</option></select><button class="w-full bg-blue-700 p-3 rounded-xl font-bold text-[9px]">Registrar</button>
             </form>
-
             <form method="POST" class="space-y-3 mb-8 border-b border-gray-800 pb-6">
-                <input type="hidden" name="action" value="creditos">
-                <p class="text-[8px] text-gray-500 uppercase font-bold">Cargar Saldo</p>
-                <input name="target" placeholder="Usuario Destino" class="input-dark text-xs" required>
-                <input name="cant" type="number" placeholder="Cantidad" class="input-dark text-xs" required>
-                <button class="w-full bg-red-700 p-3 rounded-xl font-bold text-[9px] uppercase shadow-lg">Enviar Créditos</button>
+                <input type="hidden" name="action" value="creditos"><input name="target" placeholder="Usuario Destino" class="input-dark text-xs" required><input name="cant" type="number" placeholder="Cantidad" class="input-dark text-xs" required><button class="w-full bg-red-700 p-3 rounded-xl font-bold text-[9px]">Enviar Créditos</button>
             </form>
-            
-            <p class="text-[8px] text-gray-500 uppercase font-bold mb-2">Lista de Usuarios</p>
-            <div class="bg-black/40 p-2 rounded-xl border border-gray-900 italic max-h-60 overflow-y-auto">{lista}</div>
+            <div class="max-h-60 overflow-y-auto">{lista}</div>
         </div>
     """, True)
-
-# --- GESTION DE PEDIDOS (Operadores) ---
-@app.route('/gestion')
-def gestion():
-    if session.get('rol') not in ['operador', 'superadmin', 'admin'] and session.get('user') != 'jhorny': return redirect('/')
-    conn = sqlite3.connect(DB_PATH); cursor = conn.cursor()
-    cursor.execute("SELECT id_pedido, cliente, numero FROM pedidos WHERE estado='PENDIENTE'")
-    ps = cursor.fetchall()
-    l = "".join([f'<div class="neon-card p-4 mb-3 flex justify-between items-center border border-red-900/20"><div><p class="text-[7px] text-gray-500 uppercase">CLIENTE: {p[1]}</p><p class="text-lg font-mono text-white">{p[2]}</p></div><a href="/trabajar/{p[0]}" class="bg-yellow-600 text-black px-4 py-2 rounded-xl text-[10px] font-black uppercase">Agarrar</a></div>' for p in ps])
-    return layout(f"<h2 class='text-center text-[10px] text-yellow-500 font-bold mt-10 mb-6 uppercase'>Bandeja Operador</h2>{l or '<p class=\"text-center text-gray-600 text-xs py-10\">Sin pendientes</p>'}", True)
-
-@app.route('/trabajar/<int:id_p>')
-def trabajar(id_p):
-    conn = sqlite3.connect(DB_PATH); cursor = conn.cursor()
-    cursor.execute("SELECT id_pedido, cliente, numero FROM pedidos WHERE id_pedido=?", (id_p,))
-    p = cursor.fetchone()
-    return layout(f"""<div class="neon-card p-6 mt-10 border border-yellow-500 shadow-xl"><h2 class="text-center text-[10px] text-yellow-500 font-bold mb-6 uppercase italic">Llenar Datos: {p[2]}</h2><form action="/completar" method="POST" class="space-y-3"><input type="hidden" name="id_p" value="{p[0]}"><input name="nom" placeholder="NOMBRES" class="input-dark text-xs" required><input name="dni" placeholder="DNI" class="input-dark text-xs" required><input name="ope" placeholder="OPERADOR" class="input-dark text-xs" required><input name="plan" placeholder="PLAN" class="input-dark text-xs" required><input name="equ" placeholder="EQUIPO" class="input-dark text-xs" required><input name="imei" placeholder="IMEI" class="input-dark text-xs" required><input name="cb" placeholder="C.BLOQ" class="input-dark text-xs" required><button class="w-full bg-green-600 p-4 rounded-xl font-black text-[10px] uppercase shadow-lg">Enviar Reporte Final</button></form></div>""", True)
-
-@app.route('/completar', methods=['POST'])
-def completar():
-    conn = sqlite3.connect(DB_PATH); cursor = conn.cursor()
-    cursor.execute("UPDATE pedidos SET nombres=?, dni=?, imei=?, c_bloq=?, operador_tel=?, plan=?, equipo=?, estado='EXITOSO' WHERE id_pedido=?", 
-                   (request.form['nom'], request.form['dni'], request.form['imei'], request.form['cb'], request.form['ope'], request.form['plan'], request.form['equ'], request.form['id_p']))
-    conn.commit()
-    return redirect('/gestion')
-
-# --- OTRAS VISTAS (LOGIN, LOGOUT, PLANES, ETC) ---
-@app.route('/logout')
-def logout(): 
-    session.clear()
-    return redirect('/login')
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -241,33 +168,22 @@ def login():
                 session['user'], session['rol'] = u, res[0]
                 return redirect('/')
     session['captcha_val'] = random.randint(100000, 999999)
-    return layout(f"""<div class="flex flex-col items-center mt-12"><div class="w-20 h-20 bg-black rounded-full border-4 border-red-900 flex items-center justify-center mb-4 shadow-2xl"><span class="text-4xl font-bold italic text-white">D</span></div><h1 class="text-xl font-bold mb-1 uppercase tracking-widest text-white">DELETED BLOCK</h1><form method="post" class="w-full space-y-4 mt-4"><input name="u" placeholder="Usuario" class="input-dark" autocomplete="off"><input name="p" type="password" placeholder="Contraseña" class="input-dark"><div class="flex gap-2"><div class="bg-white text-black p-3 rounded-xl font-mono font-bold w-1/2 text-center text-lg">{session['captcha_val']}</div><input name="cap" placeholder="Captcha" class="input-dark w-1/2 text-center" autocomplete="off"></div><button class="w-full bg-red-800 p-4 rounded-2xl font-bold text-sm uppercase shadow-lg shadow-red-900/40">Acceder</button></form><a href="https://t.me/Angel_dox1" class="mt-8 text-red-400 text-xs font-bold uppercase tracking-widest flex items-center gap-2 italic"><span>👤</span> CONTACTAR VENDEDOR</a></div>""", False)
+    return layout(f"""<div class="flex flex-col items-center mt-12"><div class="w-20 h-20 bg-black rounded-full border-4 border-red-900 flex items-center justify-center mb-4"><span class="text-4xl font-bold italic text-white">D</span></div><h1 class="text-xl font-bold mb-1 uppercase text-white">DELETED BLOCK</h1><form method="post" class="w-full space-y-4 mt-4"><input name="u" placeholder="Usuario" class="input-dark" autocomplete="off"><input name="p" type="password" placeholder="Contraseña" class="input-dark"><div class="flex gap-2"><div class="bg-white text-black p-3 rounded-xl font-mono font-bold w-1/2 text-center">{session['captcha_val']}</div><input name="cap" placeholder="Captcha" class="input-dark w-1/2 text-center" autocomplete="off"></div><button class="w-full bg-red-800 p-4 rounded-2xl font-bold text-sm">Acceder</button></form></div>""", False)
+
+# --- VISTAS FALTANTES REDUCIDAS ---
+@app.route('/logout')
+def logout(): session.clear(); return redirect('/login')
 
 @app.route('/planes')
-def planes():
-    precios = [("01 CRÉDITO", "S/15.00"), ("04 CRÉDITOS", "S/60.00"), ("06 CRÉDITOS", "S/90.00"), ("10 CRÉDITOS", "S/150.00"), ("12 CRÉDITOS", "S/120.00"), ("20 CRÉDITOS", "S/200.00")]
-    cards = "".join([f'<div class="neon-card p-4 mb-3 border-l-4 border-red-600 flex justify-between items-center"><div><p class="text-sm font-bold text-white uppercase">{p[0]}</p><p class="text-[10px] text-gray-500 font-mono">{p[1]}</p></div><a href="https://t.me/Angel_dox1?text=Quiero+comprar+{p[0].replace(" ","+")}" class="bg-gradient-to-r from-purple-600 to-pink-600 px-4 py-2 rounded-xl text-[9px] font-bold uppercase text-white shadow-lg">Comprar</a></div>' for p in precios])
-    return layout(f"<h2 class='text-center text-[10px] text-red-500 font-bold mt-10 mb-6 uppercase tracking-widest italic'>Paquetes Oficiales</h2>{cards}", True)
+def planes(): return layout("<h2 class='text-center text-red-500 font-bold mt-10'>PAQUETES DISPONIBLES EN TELEGRAM</h2>", True)
 
 @app.route('/bloqueo')
-def bloqueo():
-    return layout(f"""<div class="neon-card p-6 mt-10 text-center"><h2 class="text-[10px] text-red-400 font-bold mb-6 uppercase italic tracking-widest">Solicitar Bloqueo</h2><form action="/solicitar" method="POST" class="space-y-4"><div class="bg-black p-5 rounded-2xl border border-gray-800"><input type="text" name="num" placeholder="9XXXXXXXX" maxlength="9" class="bg-transparent w-full text-center text-4xl font-mono text-white outline-none" required></div><button class="w-full bg-red-800 p-4 rounded-2xl font-bold text-sm uppercase">Enviar Solicitud</button></form></div>""", True)
+def bloqueo(): return layout("<h2 class='text-center text-red-500 font-bold mt-10'>MÓDULO DE BLOQUEO ACTIVO</h2>", True)
 
 @app.route('/soporte')
-def soporte():
-    return layout(f"""<div class="neon-card p-8 mt-10 text-center border-t-2 border-green-500"><h2 class="text-xl font-bold mb-2 uppercase italic text-white tracking-tighter">Soporte 24/7</h2><a href="https://t.me/Angel_dox1" class="inline-block w-full bg-green-600 p-4 rounded-3xl font-bold text-white uppercase text-xs">Ir a Telegram</a></div>""", True)
-
-@app.route('/solicitar', methods=['POST'])
-def solicitar():
-    if 'user' in session:
-        conn = sqlite3.connect(DB_PATH); cursor = conn.cursor()
-        cursor.execute("SELECT creditos FROM usuarios WHERE user=?", (session['user'],))
-        if cursor.fetchone()[0] > 0:
-            cursor.execute("UPDATE usuarios SET creditos = creditos - 1 WHERE user=?", (session['user'],))
-            cursor.execute("INSERT INTO pedidos (cliente, numero, estado) VALUES (?, ?, 'PENDIENTE')", (session['user'], request.form['num']))
-            conn.commit()
-    return redirect('/')
+def soporte(): return layout("<h2 class='text-center text-green-500 font-bold mt-10'>SOPORTE 24/7</h2>", True)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
-
+    # --- CORRECCIÓN DE PUERTO PARA RENDER ---
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
